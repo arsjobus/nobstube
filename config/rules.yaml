@@ -1,0 +1,15 @@
+exclusions:
+  creator_types: [influencer, lifestyle_creator, personality_driven_channel]
+  content_types: [reaction, prank, ragebait, shock, celebrity_gossip, drama, clickbait, conspiracy, political_persuasion]
+  formats: [shorts, clips, compilations]
+  presentation: [sensational, engagement_bait, thumbnail_bait]
+  commercial: [primarily_promotional]
+preferences:
+  creator_types: [university, museum, educational_institution, professional_organization, technical_expert, documentary_producer]
+  content_types: [educational, documentary, lecture, demonstration, technical, interview, primary_source]
+  qualities: [substantive, informative, original, long_form]
+settings:
+  results_per_page: 10
+  candidates_per_source: 10
+  minimum_duration_seconds: 30
+  maximum_duration_seconds: 9000

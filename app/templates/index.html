@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NoBSTube</title>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<main class="container">
+<header>
+  <div class="brand">
+    <a class="brand-mark" href="/" aria-label="NoBSTube home">
+      <img src="/static/favicon.svg" alt="">
+    </a>
+    <div>
+      <h1>NoBSTube</h1>
+      <p>Search and discover without a recommendation feed.</p>
+    </div>
+  </div>
+  <a class="settings" href="/rules">Rules</a>
+</header>
+
+<form action="/search" method="get" class="search" id="search-form">
+  <input id="search-input" name="q" value="{{ query }}"
+         placeholder="What would you like to watch or learn?" autofocus>
+  <select name="candidates_per_source" aria-label="Candidates per source" title="How many candidates to query from each source">
+    {% for count in candidate_options %}
+      <option value="{{ count }}" {% if candidates_per_source == count %}selected{% endif %}>{{ count }} per source</option>
+    {% endfor %}
+  </select>
+  <select name="sort" id="sort-select" aria-label="Sort">
+    <option value="relevance" {% if sort == "relevance" %}selected{% endif %}>Relevance</option>
+    <option value="newest" {% if sort == "newest" %}selected{% endif %}>Newest</option>
+    <option value="oldest" {% if sort == "oldest" %}selected{% endif %}>Oldest</option>
+    <option value="views_desc" {% if sort == "views_desc" %}selected{% endif %}>Views: high → low</option>
+    <option value="views_asc" {% if sort == "views_asc" %}selected{% endif %}>Views: low → high</option>
+    <option value="duration_asc" {% if sort == "duration_asc" %}selected{% endif %}>Duration: short → long</option>
+    <option value="duration_desc" {% if sort == "duration_desc" %}selected{% endif %}>Duration: long → short</option>
+  </select>
+  <button type="submit">Search</button>
+</form>
+
+<div id="page-loading" class="page-loading" hidden aria-live="polite" aria-busy="true">
+  <div class="loading-card">
+    <span class="spinner" aria-hidden="true"></span>
+    <span>Finding useful videos…</span>
+  </div>
+</div>
+
+{% if query %}
+<div class="result-info">
+  <span>{{ total }} filtered results</span>
+  {% if pages %}<span>Page {{ page }} of {{ pages }}</span>{% endif %}
+</div>
+{% endif %}
+
+{% if query and not videos %}
+<div class="empty">No videos survived the current filters.</div>
+{% endif %}
+
+<section class="grid">
+{% for video in videos %}
+<article class="card">
+  <a class="video-link" href="/watch/{{ video.source }}/{{ video.source_id }}" data-watch-url="/watch/{{ video.source }}/{{ video.source_id }}">
+    <div class="thumbnail-wrap">
+      {% if video.thumbnail_url %}
+        <img src="{{ video.thumbnail_url }}" alt="" loading="lazy" referrerpolicy="no-referrer">
+      {% else %}
+        <div class="no-thumb">No source thumbnail</div>
+      {% endif %}
+      {% if video.duration_label %}
+        <span class="duration-badge">{{ video.duration_label }}</span>
+      {% endif %}
+    </div>
+    <div class="card-body">
+      <h2>{{ video.title }}</h2>
+      <div class="meta">
+        {% if video.channel %}<span>{{ video.channel }}</span>{% endif %}
+        {% if video.views_label %}<span>{{ video.views_label }}</span>{% endif %}
+        {% set source_class = video.source|lower|replace(' ', '-') %}
+        <span class="source-badge source-{{ source_class }}">
+          {% if video.source == 'YouTube' %}▶{% elif video.source == 'PeerTube' %}◉{% elif video.source == 'Internet Archive' %}▣{% endif %}
+          {{ video.source }}
+        </span>
+      </div>
+    </div>
+  </a>
+</article>
+{% endfor %}
+</section>
+
+{% if pages > 1 %}
+<nav class="pagination" aria-label="Pagination">
+  {% if page > 1 %}
+    <a href="{{ page_url(page - 1) }}">← Previous</a>
+  {% endif %}
+  {% for n in range(1, pages + 1) %}
+    <a class="{% if n == page %}current{% endif %}" href="{{ page_url(n) }}">{{ n }}</a>
+  {% endfor %}
+  {% if page < pages %}
+    <a href="{{ page_url(page + 1) }}">Next →</a>
+  {% endif %}
+</nav>
+{% endif %}
+</main>
+
+<div id="watch-modal" class="watch-modal" hidden aria-hidden="true">
+  <div class="watch-backdrop" data-close-watch></div>
+  <div class="watch-dialog" role="dialog" aria-modal="true" aria-label="Video player">
+    <button class="watch-close" type="button" aria-label="Close video" data-close-watch>×</button>
+    <div id="watch-modal-content" class="watch-modal-content">
+      <div class="watch-loading">Loading video…</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const searchForm = document.getElementById("search-form");
+const searchButton = searchForm.querySelector("button[type=submit]");
+const pageLoading = document.getElementById("page-loading");
+const sortSelect = document.getElementById("sort-select");
+
+function showSearchLoading() {
+  pageLoading.hidden = false;
+  searchButton.disabled = true;
+  searchButton.setAttribute("aria-busy", "true");
+}
+
+searchForm.addEventListener("submit", showSearchLoading);
+sortSelect.addEventListener("change", () => {
+  // Sorting uses the server-side candidate cache, so changing sort should
+  // immediately request the already-built result pool rather than requiring
+  // the user to press Search again.
+  showSearchLoading();
+  searchForm.requestSubmit();
+});
+
+const watchModal = document.getElementById("watch-modal");
+const watchContent = document.getElementById("watch-modal-content");
+const originalResultsUrl = window.location.href;
+let watchOpen = false;
+
+function openWatchModal(url) {
+  watchModal.hidden = false;
+  watchModal.setAttribute("aria-hidden", "false");
+  watchContent.innerHTML = '<div class="watch-loading">Loading video…</div>';
+  document.body.classList.add("modal-open");
+  watchOpen = true;
+  history.pushState({watch: true}, "", url);
+
+  fetch(url, {headers: {"X-Requested-With": "modal"}})
+    .then(response => {
+      if (!response.ok) throw new Error("Unable to load video");
+      return response.text();
+    })
+    .then(html => {
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      const content = doc.querySelector(".watch-container");
+      if (!content) throw new Error("Video page did not contain watch content");
+      watchContent.innerHTML = "";
+      watchContent.appendChild(content);
+    })
+    .catch(() => {
+      watchContent.innerHTML = '<div class="watch-loading">Unable to load this video. <a href="' + url + '" target="_blank" rel="noopener noreferrer">Open video page</a>.</div>';
+    });
+}
+
+function closeWatchModal(fromHistory = false) {
+  if (!watchOpen) return;
+  watchModal.hidden = true;
+  watchModal.setAttribute("aria-hidden", "true");
+  watchContent.innerHTML = '<div class="watch-loading">Loading video…</div>';
+  document.body.classList.remove("modal-open");
+  watchOpen = false;
+  if (!fromHistory) history.back();
+}
+
+document.querySelectorAll(".video-link").forEach(link => {
+  link.addEventListener("click", event => {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    openWatchModal(link.dataset.watchUrl);
+  });
+});
+
+document.querySelectorAll("[data-close-watch]").forEach(button => {
+  button.addEventListener("click", () => closeWatchModal());
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && watchOpen) {
+    event.preventDefault();
+    closeWatchModal();
+    return;
+  }
+  if (event.key === "/" && document.activeElement.tagName !== "INPUT" && !watchOpen) {
+    event.preventDefault();
+    document.getElementById("search-input").focus();
+  }
+  {% if pages > 1 %}
+  if (!watchOpen && event.key === "ArrowLeft" && {{ page }} > 1) {
+    location.href = "{{ page_url(page - 1) }}";
+  }
+  if (!watchOpen && event.key === "ArrowRight" && {{ page }} < {{ pages }}) {
+    location.href = "{{ page_url(page + 1) }}";
+  }
+  {% endif %}
+});
+
+window.addEventListener("popstate", () => {
+  if (watchOpen) closeWatchModal(true);
+});
+</script>
+</body>
+</html>
