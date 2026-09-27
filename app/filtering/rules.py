@@ -79,7 +79,7 @@ class RuleEngine:
             "gone wrong",
             "insane reaction",
             "must watch",
-            "secret they don't want you to know",
+            "they don't want you to know",
         ]
         for phrase in banned_phrases:
             if phrase in text:
