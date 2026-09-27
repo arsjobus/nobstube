@@ -1,185 +1,184 @@
-# NoBSTube v1.3.1
+# NoBSTube
 
-A local, self-hosted video discovery application designed to find useful videos without exposing you to an algorithmic recommendation feed.
+**A local, self-hosted video discovery engine that helps you find useful videos without relying on an algorithmic recommendation feed.**
 
-## v1.2.0 changes
+NoBSTube searches multiple video sources, builds a local candidate pool, applies deterministic filtering, and uses a locally running LLM to identify videos that are relevant to what you actually searched for.
 
-- 100 candidates requested from each source per search.
-- YouTube search optimized for discovery using lightweight `yt-dlp` extraction.
-- YouTube search timeout reduced so a slow YouTube request cannot hold the whole search open indefinitely.
-- Source searches remain concurrent and isolated.
-- Hard exclusions are applied before sending videos to Ollama.
-- Qwen/Ollama classification is batched and uses bounded concurrency.
-- Search results are cached in memory for 15 minutes.
-- Sorting and all pagination operate on the cached candidate set; changing page does not search YouTube, PeerTube, Internet Archive, or Ollama again.
-- The complete filtered 100-video pool is saved to SQLite so opening a result does not trigger another source search.
-- YouTube uses the official embedded player. Other sources use direct playback when their metadata exposes a playable URL.
-- When an embedded/direct player is unavailable, the watch page provides an external link to the hosting site.
-- Source-provided thumbnails only. No generated thumbnails, video downloads, screenshots, or ffmpeg are used for discovery.
-- `.env.example` now documents the Ollama configuration.
-- Existing SQLite database migrations remain compatible with older databases.
-- Fixes the classifier/pipeline append bug and keeps the rule-engine tests compatible.
+The goal is simple:
 
-## Install / upgrade
+> **Search for something. Get useful results. No recommendation feed required.**
 
-Stop the existing Nobstube server and back up the project. Extract this release over the existing project.
+---
 
-Then update the environment:
+## Why NoBSTube?
 
-```bash
-pip install -U -r requirements.txt
+Most video platforms optimize for keeping you watching.
+
+NoBSTube is designed around a different workflow:
+
+1. You explicitly search for something.
+2. NoBSTube gathers candidates from multiple sources.
+3. Obvious unwanted content is removed using deterministic rules.
+4. A local LLM evaluates the remaining candidates for usefulness and relevance.
+5. Results are ranked and cached locally.
+6. Pagination and sorting happen against that cached result set rather than repeatedly searching the underlying services.
+
+There is no personalized recommendation feed and no requirement to use a cloud-hosted AI service.
+
+---
+
+## Features
+
+* 🔎 Search across multiple video sources
+* 🧠 Local LLM classification using [Ollama](https://ollama.com/)
+* 🤖 Qwen support, with `qwen3:8b` as the current recommended model
+* 🛡️ Deterministic hard-rejection rules before LLM classification
+* 📦 Batched LLM classification
+* ⚡ Bounded local concurrency
+* 💾 In-memory search-result caching
+* 📄 Pagination without repeating external searches
+* ↕️ Client-side/server-side sorting of cached candidates
+* 🌎 English-language preference without excluding other languages
+* 🖼️ Source-provided thumbnails only
+* ▶️ Embedded/direct playback where supported
+* 🔗 External playback links when a source cannot be played inside NoBSTube
+* 🌑 Dark mode by default
+* ⏳ Visible search progress indicator
+* 🛑 Search cancellation
+* 📊 Video duration and view counts when supplied by the source
+* 🏷️ Source badges for YouTube, PeerTube, and Internet Archive
+* 🧪 Automated tests
+* 🏠 Fully self-hosted
+
+---
+
+## Supported sources
+
+NoBSTube currently searches:
+
+| Source           | Discovery | Playback                        |
+| ---------------- | --------- | ------------------------------- |
+| YouTube          | ✅         | Official embed                  |
+| PeerTube         | ✅         | Direct playback where available |
+| Internet Archive | ✅         | Direct playback where available |
+
+Source behavior depends on the metadata and playback capabilities exposed by each service.
+
+NoBSTube does **not** download or re-host video media for discovery.
+
+---
+
+## Architecture
+
+A search builds a candidate pool once.
+
+```text
+                         ┌──────────────┐
+                         │   YouTube    │
+                         └──────┬───────┘
+                                │
+                         ┌──────▼───────┐
+                         │   PeerTube   │
+                         └──────┬───────┘
+                                │
+                         ┌──────▼──────────┐
+                         │ Internet Archive│
+                         └──────┬──────────┘
+                                │
+                                ▼
+                         ┌──────────────┐
+                         │ Deduplicate  │
+                         └──────┬───────┘
+                                │
+                                ▼
+                         ┌──────────────┐
+                         │ Hard Rules   │
+                         └──────┬───────┘
+                                │
+                                ▼
+                         ┌──────────────┐
+                         │ Local Ollama │
+                         │  Classifier  │
+                         └──────┬───────┘
+                                │
+                                ▼
+                         ┌──────────────┐
+                         │ Rank Results │
+                         └──────┬───────┘
+                                │
+                                ▼
+                         ┌──────────────┐
+                         │ Local Cache  │
+                         └──────┬───────┘
+                                │
+                     ┌──────────┴──────────┐
+                     ▼                     ▼
+                 Pagination             Sorting
 ```
 
-For Ollama:
+Once the candidate pool has been built, changing pages or sorting does **not** trigger another search against YouTube, PeerTube, Internet Archive, or Ollama.
+
+---
+
+# Requirements
+
+* Python 3.11+
+* macOS, Linux, or another platform capable of running the Python dependencies
+* [Ollama](https://ollama.com/) for local LLM classification
+* A compatible local model
+
+The project is currently developed and tested primarily on a MacBook Air.
+
+---
+
+# Installation
+
+Clone the repository:
+
+```bash
+git clone https://github.com/YOUR_USERNAME/nobstube.git
+cd nobstube
+```
+
+Create a virtual environment:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+# Ollama setup
+
+Install Ollama and pull the recommended model:
+
+```bash
+ollama pull qwen3:8b
+```
+
+Verify that Ollama is running:
+
+```bash
+ollama list
+```
+
+NoBSTube communicates with the local Ollama HTTP API.
+
+Create your `.env` file:
 
 ```dotenv
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=qwen3:8b
-OLLAMA_TIMEOUT=20
 OLLAMA_ENABLED=true
-OLLAMA_BATCH_SIZE=40
-OLLAMA_MAX_CONCURRENT=2
-```
 
-Start Nobstube:
-
-```bash
-uvicorn app.main:app --reload
-```
-
-## Search architecture
-
-A search builds a candidate pool once:
-
-```text
-YouTube  ──────┐
-PeerTube ──────┼──> deduplicate -> hard rules -> Ollama -> sort -> cache
-Archive  ──────┘
-                                      │
-                                      └──> up to 100 filtered results
-```
-
-The browser then pages through that cached result set. Page 2, 3, etc. do not start a new external search. Sorting also reuses the candidate pool.
-
-The cache is local to the running process and expires after 15 minutes. Restarting Nobstube clears it.
-
-## Performance
-
-The application aims to return a useful result set within roughly 30 seconds on a typical local MacBook Air, but actual time depends on YouTube/other source response time and local Qwen inference speed.
-
-The main controls are:
-
-- `candidates_per_source`: 100
-- The search UI also lets you choose 10, 25, 50, 75, or 100 candidates per source; the selected count is included in the candidate cache key so changing it triggers the appropriate source query without repeating pagination searches.
-- `OLLAMA_BATCH_SIZE`: 40
-- `OLLAMA_MAX_CONCURRENT`: 2
-- `OLLAMA_TIMEOUT`: 20 seconds per batch
-
-If Qwen inference is the bottleneck, lowering `OLLAMA_BATCH_SIZE` or concurrency may help depending on the Mac's memory/compute.
-
-## YouTube
-
-Nobstube uses `yt-dlp` without a YouTube API account. Search discovery uses flat extraction rather than fully extracting every result, which avoids unnecessary metadata/media work.
-
-Nobstube never generates replacement thumbnails. YouTube thumbnails come from YouTube's own thumbnail URLs.
-
-If YouTube becomes unavailable or exceeds its source timeout, the other sources can still return results.
-
-## Playback
-
-YouTube videos are displayed using the official YouTube embedded player. Nobstube does not download or re-host YouTube video media.
-
-For sources exposing direct playable media URLs, Nobstube can use the browser's native video player. If a video cannot be played inside Nobstube, the watch page provides a link to open the original video on its hosting site in a new tab.
-
-## Sorting
-
-Supported sorting modes:
-
-- relevance
-- newest
-- oldest
-- views high → low
-- views low → high
-- duration short → long
-- duration long → short
-
-## Tests
-
-From the project root:
-
-```bash
-PYTHONPATH=. pytest -q
-```
-
-
-## v1.2.1 diagnostic/performance update
-
-This upgrade is based on v1.2.0 and is intended to diagnose the case where
-Ollama spends a long time classifying batches but the search returns zero
-allowed videos.
-
-Changes:
-- Logs every Ollama batch independently, including elapsed time and counts.
-- Logs malformed/empty Ollama responses and batch exceptions with tracebacks.
-- Enables Qwen3 `think=false` by default for the classification pass, which
-  avoids spending inference time on extended reasoning when the task only
-  needs a structured allow/reject decision.
-- Adds `OLLAMA_THINK` to `.env.example`; set it to `true` if deeper reasoning
-  is desired.
-- Adds a bounded `num_predict=4096` to keep structured batch responses from
-  running indefinitely.
-- Keeps failures fail-closed: an unavailable or malformed classification is
-  rejected rather than accidentally allowed.
-
-After upgrading, a useful search log should look like:
-
-```text
-Ollama batch 1/7: sending 40 videos
-Ollama batch 2/7: sending 40 videos
-Ollama batch 1/7: 8.42s, returned=40, allowed=12, rejected=28, missing=0
-Ollama batch 2/7: 9.01s, returned=40, allowed=8, rejected=32, missing=0
-```
-
-If a batch fails, v1.2.1 now makes the exact failure visible instead of only
-reporting the aggregate batch duration.
-
-## v1.2.2 performance/filtering update
-
-This release keeps the v1.2.1 search architecture but tunes the local Qwen/Ollama
-classifier for a MacBook Air.
-
-Changes:
-- Keeps 100 source candidates per source.
-- Qwen receives the search query explicitly, so a broad query such as `game dev`
-  is not incorrectly rejected merely because the video is not a formal lecture.
-- The classifier prompt is shorter and explicitly allows substantive independent
-  technical/project creators.
-- Descriptions sent to Ollama are capped at 650 characters and tags at 12 items.
-- Default batch size is 16 instead of 40 or 8; this keeps each JSON response
-  manageable without creating dozens of tiny requests.
-- Default local concurrency is 1. Running multiple Qwen generations at once can
-  compete for the same MacBook memory/compute and make every request slower.
-- A single warmed `httpx.AsyncClient` is reused for all batches instead of
-  creating a new client for every batch.
-- `keep_alive` keeps Qwen loaded between batches.
-- `num_predict` defaults to 1200 because classification responses are short;
-  the old 4096 limit allowed unnecessary generation.
-- `think=false` remains the default for this fast classification pass.
-- Candidate metadata is cheaply ranked by query relevance before Ollama sees it.
-  This does not approve or reject anything; it simply means the most promising
-  candidates are classified first.
-- Ollama failures remain fail-closed.
-- Existing search-result caching and pagination behavior is retained: changing
-  page or sort does not search the external sources again.
-- No generated thumbnails or downloaded video media are introduced.
-
-Recommended `.env` starting point:
-
-```dotenv
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=qwen3:8b
 OLLAMA_TIMEOUT=75
-OLLAMA_ENABLED=true
 OLLAMA_BATCH_SIZE=16
 OLLAMA_MAX_CONCURRENT=1
 OLLAMA_NUM_PREDICT=1200
@@ -188,15 +187,370 @@ OLLAMA_KEEP_ALIVE=10m
 OLLAMA_THINK=false
 ```
 
-If one batch still takes a very long time, try `OLLAMA_BATCH_SIZE=8`. Do not
-increase concurrency first on a MacBook Air; measure single-generation speed
-before adding parallel inference.
+These are starting points rather than universal optimal values.
 
+On a MacBook Air, local inference speed depends heavily on available memory, model size, batch size, and whether other applications are competing for resources.
 
-## v1.3.1
+---
 
-- Page title and header branding are now **NoBSTube** with a matching favicon/brand mark.
-- Search requests show an on-page loading indicator while source search and Ollama classification are running.
-- Changing the sort selector automatically refreshes the results using the existing server-side candidate cache; the user no longer needs to press Search again.
-- Ollama now reports a best-effort primary language and gives English-language results a small relevance preference without rejecting other languages.
-- Existing relevance remains the primary ordering signal.
+# Running NoBSTube
+
+Start the development server:
+
+```bash
+uvicorn app.main:app --reload
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8000
+```
+
+---
+
+# Searching
+
+Enter a search query and select how many candidates to request from each source.
+
+Available candidate counts include:
+
+* 10
+* 25
+* 50
+* 75
+* 100
+
+For example:
+
+```text
+game development
+```
+
+NoBSTube might request:
+
+```text
+YouTube             100 candidates
+PeerTube             100 candidates
+Internet Archive     100 candidates
+                     ───────────────
+                     up to 300 candidates
+```
+
+The sources are queried concurrently.
+
+Duplicate videos are removed before classification.
+
+---
+
+# Local AI filtering
+
+After deterministic filtering, the remaining candidates are sent to Ollama in batches.
+
+For example:
+
+```text
+300 source candidates
+        │
+        ▼
+hard rules
+        │
+        ├── 40 rejected
+        │
+        ▼
+260 candidates
+        │
+        ▼
+Ollama batches
+        │
+        ▼
+relevance classification
+        │
+        ▼
+ranked results
+```
+
+The classifier considers information such as:
+
+* title
+* channel/creator
+* description
+* tags
+* search query
+* language
+
+English-language content receives a small preference, but non-English content is **not automatically rejected**.
+
+The LLM is used as a relevance/usefulness classifier rather than as a recommendation engine.
+
+---
+
+# Performance
+
+Local LLM inference is normally the largest part of search time.
+
+The most important settings are:
+
+```dotenv
+OLLAMA_BATCH_SIZE=16
+OLLAMA_MAX_CONCURRENT=1
+OLLAMA_TIMEOUT=75
+```
+
+### Batch size
+
+Larger batches reduce the number of HTTP requests but create larger prompts and responses.
+
+If inference becomes unstable or slow:
+
+```dotenv
+OLLAMA_BATCH_SIZE=8
+```
+
+may work better.
+
+### Concurrency
+
+Running multiple generations simultaneously can actually make local inference slower because they compete for the same memory and compute resources.
+
+Start with:
+
+```dotenv
+OLLAMA_MAX_CONCURRENT=1
+```
+
+and increase it only after measuring performance on your hardware.
+
+---
+
+# Search caching
+
+NoBSTube caches the candidate/result set for a search.
+
+This is important because it means pagination does not repeat expensive work.
+
+For example:
+
+```text
+Search "game dev"
+       │
+       ▼
+Build candidate pool
+       │
+       ▼
+Classify candidates
+       │
+       ▼
+Cache results
+       │
+       ├── Page 1
+       ├── Page 2
+       ├── Page 3
+       └── Page 4
+```
+
+Moving between pages does not cause another source search.
+
+Changing the sort order also operates on the cached candidates.
+
+Changing the candidate count creates a different candidate search configuration.
+
+The cache is local to the running NoBSTube process and expires after the configured cache period.
+
+Restarting the application clears the in-memory cache.
+
+---
+
+# Search cancellation
+
+Long local LLM searches can be cancelled from the UI.
+
+Cancelling a search:
+
+* stops the active search/classification work where possible
+* removes the pending search from the active workflow
+* clears the cached candidate set for that search
+* leaves the previous displayed results intact
+
+This prevents an unwanted long-running Ollama classification job from continuing after the user has moved on.
+
+---
+
+# Sorting
+
+Results can be sorted by:
+
+* Relevance
+* Newest
+* Oldest
+* Views: high → low
+* Views: low → high
+* Duration: short → long
+* Duration: long → short
+
+Sorting operates on the already-built candidate pool.
+
+It does not trigger another source search.
+
+---
+
+# Playback
+
+NoBSTube does not download or re-host videos simply to provide search results.
+
+### YouTube
+
+YouTube videos use the official embedded player where embedding is supported.
+
+### PeerTube and Internet Archive
+
+When source metadata exposes a playable media URL, NoBSTube can use the browser's native video player.
+
+### Unsupported playback
+
+If a video cannot be played inside NoBSTube, the watch interface provides a link to open the original video on its hosting site.
+
+---
+
+# Thumbnails
+
+NoBSTube uses thumbnails supplied by the source.
+
+It does not:
+
+* generate replacement thumbnails
+* download videos to create screenshots
+* run ffmpeg for thumbnail generation
+* create AI-generated thumbnails
+
+This keeps discovery lightweight and avoids unnecessary media processing.
+
+---
+
+# Filtering rules
+
+NoBSTube has two filtering layers.
+
+### 1. Deterministic rules
+
+Permanent exclusions are applied before a video reaches Ollama.
+
+This avoids spending local inference time on content that can be rejected cheaply.
+
+The application logs hard-rejection reasons so filtering behavior can be inspected and debugged.
+
+### 2. Semantic classification
+
+Remaining candidates are evaluated by the local LLM.
+
+The classifier considers whether a video is genuinely relevant to the user's query rather than simply matching a keyword.
+
+This allows queries such as:
+
+```text
+game dev
+```
+
+to return substantive development/project content without requiring the title to look like a formal tutorial.
+
+---
+
+# YouTube discovery
+
+NoBSTube uses `yt-dlp` for YouTube discovery rather than requiring a YouTube API account.
+
+Discovery uses lightweight extraction where possible instead of fully processing every result.
+
+If YouTube is slow or unavailable, the other sources can still return results.
+
+---
+
+# Configuration
+
+The `.env` file controls local behavior.
+
+Important settings include:
+
+| Setting                    | Purpose                                          |
+| -------------------------- | ------------------------------------------------ |
+| `OLLAMA_ENABLED`           | Enable/disable local AI classification           |
+| `OLLAMA_BASE_URL`          | Ollama server address                            |
+| `OLLAMA_MODEL`             | Ollama model name                                |
+| `OLLAMA_TIMEOUT`           | Maximum request time                             |
+| `OLLAMA_BATCH_SIZE`        | Videos sent per classification request           |
+| `OLLAMA_MAX_CONCURRENT`    | Number of simultaneous Ollama requests           |
+| `OLLAMA_NUM_PREDICT`       | Maximum generated tokens                         |
+| `OLLAMA_DESCRIPTION_CHARS` | Description length sent to Ollama                |
+| `OLLAMA_KEEP_ALIVE`        | Keep model loaded between requests               |
+| `OLLAMA_THINK`             | Enable/disable Qwen reasoning for classification |
+
+See `.env.example` for the complete configuration.
+
+---
+
+# Development
+
+Run the test suite:
+
+```bash
+PYTHONPATH=. pytest -q
+```
+
+Start the application with automatic reload:
+
+```bash
+uvicorn app.main:app --reload
+```
+
+---
+
+# Project structure
+
+```text
+nobstube/
+├── app/
+│   ├── filtering/
+│   │   ├── classifier.py
+│   │   ├── ollama.py
+│   │   ├── pipeline.py
+│   │   └── rules.py
+│   ├── sources/
+│   │   ├── youtube.py
+│   │   ├── peertube.py
+│   │   └── archive.py
+│   ├── templates/
+│   ├── static/
+│   ├── database.py
+│   ├── config.py
+│   └── main.py
+├── tests/
+├── .env.example
+├── requirements.txt
+└── README.md
+```
+
+---
+
+# Privacy
+
+NoBSTube is designed to run locally.
+
+The LLM classification step uses your local Ollama installation rather than sending video metadata to a hosted AI provider.
+
+Searches do contact the external video services required to obtain search results.
+
+The application does not need a cloud AI account to perform classification.
+
+---
+
+# Current limitations
+
+NoBSTube is intentionally lightweight and has some limitations:
+
+* Local LLM inference can be slow on lower-powered hardware.
+* Search quality depends partly on the metadata supplied by each source.
+* Some videos cannot be embedded because the hosting service or creator does not permit embedding.
+* Source APIs and search behavior can change.
+* YouTube discovery through `yt-dlp` may occasionally be affected by changes on YouTube.
+* The current cache is process-local rather than a distributed cache.
+* Playback availabili
