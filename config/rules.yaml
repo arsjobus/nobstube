@@ -1,6 +1,6 @@
 exclusions:
   creator_types: [influencer, lifestyle_creator, personality_driven_channel]
-  content_types: [reaction, prank, ragebait, shock, celebrity_gossip, drama, clickbait, conspiracy, political_persuasion]
+  content_types: [reaction, prank, ragebait, shock, celebrity_gossip, drama, clickbait, conspiracy, political_persuasion, rated-r, adult, sexualized, violent, sensationalized]
   formats: [shorts, clips]
   presentation: [sensational, engagement_bait, thumbnail_bait]
   commercial: [primarily_promotional]
