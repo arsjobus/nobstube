@@ -118,8 +118,7 @@ onUnmounted(() => document.removeEventListener('keydown', handleKey))
   </main>
 
   <main v-else-if="video" class="watch-container watch-page">
-    <div class="watch-header"><RouterLink to="/">← Back to results</RouterLink></div>
-    <div class="player"><video v-if="video.playable_url" controls preload="metadata" :poster="video.thumbnail_url"><source :src="video.playable_url">Your browser does not support HTML5 video.</video><iframe v-else-if="video.embed_url" :src="video.embed_url" :title="video.title" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe><div v-else class="player-unavailable">This video cannot currently be played inside NoBSTube.</div></div>
+    <div class="player"><video v-if="video.playable_url" controls preload="metadata" :poster="video.thumbnail_url"><source :src="video.playable_url">Your browser does not support HTML5 video.</video><iframe v-else-if="video.embed_url" :src="video.embed_url" :title="video.title" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe><div v-else class="player-unavailable">This video cannot currently be played inside NoBSTube.</div><button class="watch-close" type="button" aria-label="Close video and return to results" title="Back to results" @click="closeVideo">×</button></div>
     <div v-if="video.url" class="external fallback-link"><a :href="video.url" target="_blank" rel="noopener noreferrer">{{ video.embed_url || video.playable_url ? 'If playback fails, open' : 'Open' }} this video on {{ video.source }} ↗</a></div>
     <h1>{{ video.title }}</h1><div v-if="video.channel" class="watch-meta">{{ video.channel }}</div><div v-if="video.description" class="description">{{ video.description }}</div>
   </main>
