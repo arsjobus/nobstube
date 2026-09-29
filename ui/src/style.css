@@ -56,3 +56,13 @@ button{background:var(--accent);color:#0b0d10}
 
 /* Hidden loading overlay must remain hidden until a search starts. */
 .page-loading[hidden]{display:none!important}
+
+/* Keep video cards a consistent height across result pages. */
+.grid{align-items:stretch}
+.card,.video-link{height:100%}
+.video-link{display:flex;flex-direction:column}
+.thumbnail-wrap{flex:none}
+.card-body{height:148px;min-height:148px;display:flex;flex-direction:column;overflow:hidden}
+.card h2{display:-webkit-box;height:2.7em;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2;text-overflow:ellipsis}
+.card .meta{display:flex;flex:1;flex-direction:column;align-items:flex-start;gap:4px;min-height:0;overflow:hidden}
+.card .meta .source-badge{margin-top:auto}

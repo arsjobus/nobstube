@@ -96,7 +96,7 @@ onUnmounted(() => document.removeEventListener('keydown', handleKey))
       <article v-for="item in results?.videos" :key="`${item.source}:${item.source_id}`" class="card">
         <a class="video-link" :href="`/watch/${encodeURIComponent(item.source)}/${item.source_id}`" @click.prevent="openVideo(item)">
           <div class="thumbnail-wrap"><img v-if="item.thumbnail_url" :src="item.thumbnail_url" alt="" loading="lazy" referrerpolicy="no-referrer"><div v-else class="no-thumb">No source thumbnail</div><span v-if="item.duration_label" class="duration-badge">{{ item.duration_label }}</span></div>
-          <div class="card-body"><h2>{{ item.title }}</h2><div class="meta"><span v-if="item.channel">{{ item.channel }}</span><span v-if="item.views_label">{{ item.views_label }}</span><span class="source-badge" :class="`source-${item.source.toLowerCase().replaceAll(' ', '-')}`">{{ item.source === 'YouTube' ? '▶' : item.source === 'PeerTube' ? '◉' : '▣' }} {{ item.source }}</span></div></div>
+          <div class="card-body"><h2>{{ item.title }}</h2><div class="meta"><span v-if="item.channel" class="card-channel" :title="item.channel">{{ item.channel.length > 25 ? `${item.channel.slice(0, 25)}…` : item.channel }}</span><span v-if="item.views_label" class="card-views">{{ item.views_label }}</span><span class="source-badge" :class="`source-${item.source.toLowerCase().replaceAll(' ', '-')}`">{{ item.source === 'YouTube' ? '▶' : item.source === 'PeerTube' ? '◉' : '▣' }} {{ item.source }}</span></div></div>
         </a>
       </article>
     </section>
