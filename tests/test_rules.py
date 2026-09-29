@@ -1,5 +1,5 @@
-from app.filtering.rules import RuleEngine
-from app.models import Video
+from api.filtering.rules import RuleEngine
+from api.models import Video
 
 def test_reaction_is_rejected():
     engine = RuleEngine({

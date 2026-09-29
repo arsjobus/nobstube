@@ -123,6 +123,7 @@ Once the candidate pool has been built, changing pages or sorting does **not** t
 # Requirements
 
 * Python 3.11+
+* Node.js 20.19+ and npm for the Vue frontend
 * macOS, Linux, or another platform capable of running the Python dependencies
 * [Ollama](https://ollama.com/) for local LLM classification
 * A compatible local model
@@ -195,17 +196,21 @@ On a MacBook Air, local inference speed depends heavily on available memory, mod
 
 # Running NoBSTube
 
-Start the development server:
+Start the API:
 
 ```bash
-uvicorn app.main:app --reload
+uvicorn api.main:app --reload
 ```
 
-Then open:
+Start the UI in another terminal:
 
-```text
-http://127.0.0.1:8000
+```bash
+cd ui
+npm install
+npm run dev
 ```
+
+Open `http://localhost:5173`. The API is available at `http://127.0.0.1:8000` and its interactive schema at `/docs`.
 
 ---
 
@@ -496,11 +501,21 @@ Run the test suite:
 PYTHONPATH=. pytest -q
 ```
 
-Start the application with automatic reload:
+Start the API and UI separately during development:
 
 ```bash
-uvicorn app.main:app --reload
+uvicorn api.main:app --reload
 ```
+
+In a second terminal:
+
+```bash
+cd ui
+npm install
+npm run dev
+```
+
+The Vue development server runs at `http://localhost:5173` and proxies `/api` to `http://127.0.0.1:8000`. Set `VITE_API_PROXY` when the API is at another address. For a separately hosted production UI, set `VITE_API_BASE_URL` before building it to the API origin, and set the API's comma-separated `CORS_ORIGINS` to the UI origin(s). The API listens on port 8000 and exposes its OpenAPI schema at `/docs`.
 
 ---
 
@@ -508,7 +523,7 @@ uvicorn app.main:app --reload
 
 ```text
 nobstube/
-├── app/
+├── api/
 │   ├── filtering/
 │   │   ├── classifier.py
 │   │   ├── ollama.py
@@ -518,11 +533,15 @@ nobstube/
 │   │   ├── youtube.py
 │   │   ├── peertube.py
 │   │   └── archive.py
-│   ├── templates/
-│   ├── static/
 │   ├── database.py
 │   ├── config.py
 │   └── main.py
+├── ui/
+│   ├── src/
+│   ├── package.json
+│   └── vite.config.ts
+├── config/
+│   └── rules.yaml
 ├── tests/
 ├── .env.example
 ├── requirements.txt
