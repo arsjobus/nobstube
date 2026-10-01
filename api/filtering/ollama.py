@@ -46,7 +46,7 @@ Reject only when there is a clear reason.
 Return ONLY valid JSON with this exact structure:
 {"results":[{"index":1,"allow":true,"category":"technology","language":"en","confidence":0.91,"reason":"Relevant technical tutorial"}]}
 
-Language guidance: identify the primary language when it can be inferred from the title, channel, description, or tags. Use "en" for English, another ISO 639-1 code when reasonably clear, or "unknown" when it cannot be determined. Prefer substantive English-language content when choosing between otherwise comparable candidates, but do not reject a relevant video solely because it is not English.
+Language guidance: identify the video's primary language from its title and available details such as description and tags. Use "en" for English, another ISO 639-1 code when reasonably clear, or "unknown" only when the language cannot be determined. Do not infer language from the channel name alone when the video details indicate another language.
 """
 
 

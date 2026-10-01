@@ -12,6 +12,7 @@ class ClassificationResult:
     reason: str = ""
     category: str = ""
     confidence: float = 0.0
+    language: str = "unknown"
 
 
 class AIClassifier:
@@ -68,6 +69,7 @@ class AIClassifier:
                 reason=str(result.get("reason", "")),
                 category=str(result.get("category", "unknown")),
                 confidence=confidence,
+                language=str(result.get("language", "unknown")),
             )
 
         return [

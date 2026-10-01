@@ -1,6 +1,6 @@
 exclusions:
   creator_types: [influencer, lifestyle_creator, personality_driven_channel]
-  content_types: [reaction, prank, ragebait, shock, celebrity_gossip, drama, clickbait, conspiracy, political, lets_pla, unethical]
+  content_types: [reaction, prank, ragebait, shock, celebrity_gossip, drama, clickbait, conspiracy, political, politics, unethical]
   formats: [shorts, clips]
   presentation: [sensational, engagement_bait, thumbnail_bait]
   commercial: [primarily_promotional]
@@ -13,3 +13,5 @@ settings:
   candidates_per_source: 10
   minimum_duration_seconds: 30
   maximum_duration_seconds: 9000
+  preferred_language: en
+  exclude_non_preferred_language: true

@@ -13,6 +13,8 @@ DEFAULT_RULES = {
         "candidates_per_source": 10,
         "minimum_duration_seconds": 30,
         "maximum_duration_seconds": 9000,
+        "preferred_language": "en",
+        "exclude_non_preferred_language": False,
     },
 }
 

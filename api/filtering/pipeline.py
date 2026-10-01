@@ -159,10 +159,21 @@ class SearchPipeline:
             classified = []
             for video, result in zip(candidates, results):
                 if result.allowed:
+                    language = str(getattr(result, "language", "unknown") or "unknown").strip().lower()
+                    preferred_language = str(
+                        self.rules.settings.get("preferred_language", "en") or "en"
+                    ).strip().lower()
+                    known_language = language not in {"", "unknown", "und"}
+                    if (
+                        self.rules.settings.get("exclude_non_preferred_language", False)
+                        and known_language
+                        and language not in {preferred_language, "english", "eng"}
+                    ):
+                        continue
+
                     # Blend the user's configured preferences with the LLM
                     # confidence without letting either dominate completely.
                     preference = self.rules.preference_score(video)
-                    language = str(getattr(result, "language", "unknown")).lower()
                     # English is preferred, not required. Keep the language
                     # signal deliberately small so relevance remains primary.
                     language_bonus = 0.10 if language in {"en", "eng", "english"} else (
