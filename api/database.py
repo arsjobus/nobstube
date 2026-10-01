@@ -25,6 +25,10 @@ CREATE TABLE IF NOT EXISTS videos (
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(source, source_id)
 );
+CREATE TABLE IF NOT EXISTS bookmarks (
+    video_id INTEGER PRIMARY KEY REFERENCES videos(id) ON DELETE CASCADE,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
 """
 
 
@@ -168,5 +172,61 @@ def get_video(source: str, source_id: str):
             tags=(row["tags"] or "").split(", ") if row["tags"] else [],
             score=row["score"] or 0.0,
         )
+    finally:
+        conn.close()
+
+
+def set_bookmarked(source: str, source_id: str, bookmarked: bool) -> bool:
+    init_db()
+    conn = _connect()
+    try:
+        row = conn.execute(
+            "SELECT id FROM videos WHERE lower(source)=lower(?) AND source_id=?",
+            (source, source_id),
+        ).fetchone()
+        if not row:
+            return False
+        if bookmarked:
+            conn.execute("INSERT OR IGNORE INTO bookmarks(video_id) VALUES (?)", (row["id"],))
+        else:
+            conn.execute("DELETE FROM bookmarks WHERE video_id=?", (row["id"],))
+        conn.commit()
+        return True
+    finally:
+        conn.close()
+
+
+def is_bookmarked(source: str, source_id: str) -> bool:
+    init_db()
+    conn = _connect()
+    try:
+        return conn.execute(
+            "SELECT 1 FROM bookmarks b JOIN videos v ON v.id=b.video_id WHERE lower(v.source)=lower(?) AND v.source_id=?",
+            (source, source_id),
+        ).fetchone() is not None
+    finally:
+        conn.close()
+
+
+def list_bookmarks(limit: int, offset: int):
+    init_db()
+    conn = _connect()
+    try:
+        total = conn.execute("SELECT COUNT(*) FROM bookmarks").fetchone()[0]
+        rows = conn.execute(
+            "SELECT v.* FROM bookmarks b JOIN videos v ON v.id=b.video_id ORDER BY b.created_at DESC, v.id DESC LIMIT ? OFFSET ?",
+            (limit, offset),
+        ).fetchall()
+        from .models import Video
+        videos = [Video(
+            source=row["source"], source_id=row["source_id"], url=row["url"] or "",
+            title=row["title"] or "", channel=row["channel"] or "",
+            description=row["description"] or "", duration_seconds=row["duration_seconds"],
+            published_at=row["published_at"], thumbnail_url=row["thumbnail_url"] or "",
+            view_count=row["view_count"], like_count=row["like_count"],
+            embed_url=row["embed_url"] or "", playable_url=row["playable_url"] or "",
+            tags=(row["tags"] or "").split(", ") if row["tags"] else [], score=row["score"] or 0.0,
+        ) for row in rows]
+        return videos, total
     finally:
         conn.close()

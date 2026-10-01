@@ -8,7 +8,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import load_rules
-from .database import get_video, init_db, save_videos
+from .database import get_video, init_db, is_bookmarked, list_bookmarks, save_videos, set_bookmarked
 from .filtering.pipeline import SearchPipeline, VALID_SORTS
 from .media.playback import resolve_playback
 from .models import Video
@@ -30,7 +30,7 @@ cors_origins = [origin.strip() for origin in os.getenv("CORS_ORIGINS", "*").spli
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
-    allow_methods=["GET"],
+    allow_methods=["GET", "PUT", "DELETE"],
     allow_headers=["*"],
 )
 
@@ -75,7 +75,7 @@ async def search(q: str = "", sort: str = "relevance", page: int = 1, candidates
     start = (page - 1) * 10
     save_videos(all_videos)
     return {
-        "videos": [video_payload(video) for video in all_videos[start:start + 10]],
+        "videos": [dict(video_payload(video), is_bookmarked=is_bookmarked(video.source, video.source_id)) for video in all_videos[start:start + 10]],
         "query": q,
         "sort": sort,
         "page": page,
@@ -83,6 +83,31 @@ async def search(q: str = "", sort: str = "relevance", page: int = 1, candidates
         "total": total,
         "candidates_per_source": candidates_per_source,
     }
+
+
+@app.get("/api/bookmarks")
+async def bookmarks(page: int = 1):
+    page = max(1, page)
+    videos, total = list_bookmarks(10, (page - 1) * 10)
+    pages = ceil(total / 10) if total else 0
+    if pages and page > pages:
+        page = pages
+        videos, total = list_bookmarks(10, (page - 1) * 10)
+    return {"videos": [dict(video_payload(video), is_bookmarked=True) for video in videos], "page": page, "pages": pages, "total": total}
+
+
+@app.put("/api/bookmarks/{source}/{source_id:path}")
+async def add_bookmark(source: str, source_id: str):
+    if not set_bookmarked(source, source_id, True):
+        raise HTTPException(status_code=404, detail="Video not found")
+    return {"bookmarked": True}
+
+
+@app.delete("/api/bookmarks/{source}/{source_id:path}")
+async def remove_bookmark(source: str, source_id: str):
+    if not set_bookmarked(source, source_id, False):
+        raise HTTPException(status_code=404, detail="Video not found")
+    return {"bookmarked": False}
 
 
 @app.get("/api/watch/{source}/{source_id:path}")
@@ -98,4 +123,4 @@ async def watch(source: str, source_id: str):
         )
     if video is None:
         raise HTTPException(status_code=404, detail="Video not found")
-    return video_payload(await resolve_playback(video))
+    return dict(video_payload(await resolve_playback(video)), is_bookmarked=is_bookmarked(source, source_id))

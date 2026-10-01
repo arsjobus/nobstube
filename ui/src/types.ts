@@ -15,16 +15,17 @@ export interface Video {
   playable_url: string
   tags: string[]
   score: number
+  is_bookmarked: boolean
 }
 
 export interface SearchResults {
   videos: Video[]
-  query: string
-  sort: string
+  query?: string
+  sort?: string
   page: number
   pages: number
   total: number
-  candidates_per_source: number
+  candidates_per_source?: number
 }
 
 export interface AppConfig {

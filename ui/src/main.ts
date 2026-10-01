@@ -8,6 +8,7 @@ const router = createRouter({
   routes: [
     { path: '/', component: App },
     { path: '/rules', component: App },
+    { path: '/bookmarks', component: App },
     { path: '/watch/:source/:sourceId(.*)', component: App },
   ],
 })
