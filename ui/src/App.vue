@@ -18,7 +18,7 @@ const video = ref<Video | null>(null)
 const loading = ref(false)
 const error = ref('')
 const routeView = computed(() => route.path === '/rules' ? 'rules' : route.path === '/bookmarks' ? 'bookmarks' : route.path.startsWith('/watch/') ? 'watch' : 'search')
-const busyLabel = computed(() => routeView.value === 'watch' ? 'Loading video…' : 'Finding useful videos…')
+const busyLabel = computed(() => routeView.value === 'watch' ? 'Loading video…' : 'Removing the bullsh*t…')
 
 async function loadSearch(nextPage = 1, updateUrl = true) {
   page.value = nextPage

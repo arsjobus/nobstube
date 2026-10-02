@@ -49,7 +49,7 @@ class AIClassifier:
         llm_items = []
 
         for index, video in enumerate(videos):
-            rejected, reason = self.rules.hard_reject(video)
+            rejected, reason = self.rules.hard_reject(video, query=query)
             if rejected:
                 results[index] = ClassificationResult(False, 0.0, reason, "hard_rule", 1.0)
             else:

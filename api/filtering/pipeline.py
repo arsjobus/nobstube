@@ -65,6 +65,11 @@ class SearchPipeline:
             self._cache.pop(oldest, None)
 
     async def _build_candidates(self, query: str, candidates_per_source: int | None = None) -> list:
+        query_rejected, query_reason = self.rules.hard_reject(None, query=query)
+        if query_rejected:
+            logger.info("Search %r rejected by hard rules: %s", query, query_reason)
+            return []
+
         if candidates_per_source is None:
             candidates_per_source = int(self.rules.settings.get("candidates_per_source", 10))
         candidates_per_source = max(1, min(int(candidates_per_source), 100))
@@ -125,7 +130,7 @@ class SearchPipeline:
             rejection_examples = []
 
             for video in videos:
-                rejected, reason = self.rules.hard_reject(video)
+                rejected, reason = self.rules.hard_reject(video, query=query)
                 if rejected:
                     hard_rejected += 1
                     reason = reason or "No reason supplied"

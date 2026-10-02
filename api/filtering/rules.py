@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 import yaml
 
 RULES_PATH = Path("config/rules.yaml")
@@ -15,6 +16,16 @@ def _as_text(value) -> str:
     return str(value)
 
 class RuleEngine:
+    # Search terms that identify an explicitly political query. The configured
+    # ``politics``/``political`` exclusion is a category, so it needs semantic
+    # query aliases rather than a literal substring check against video text.
+    POLITICAL_QUERY_TERMS = {
+        "politic", "politics", "political", "election", "elections",
+        "president", "presidential", "congress", "senate", "senator",
+        "government", "campaign", "vote", "voting", "policy", "biden",
+        "trump", "harris", "republican", "democrat", "democratic",
+    }
+
     def __init__(self, data=None):
         self.settings = {}
         self.exclusions = {}
@@ -38,7 +49,19 @@ class RuleEngine:
         self.exclusions = data.get("exclusions") or {}
         self.preferences = data.get("preferences") or {}
 
-    def hard_reject(self, video):
+    def hard_reject(self, video, query: str = ""):
+        excluded_content_types = {
+            _as_text(value).strip().lower()
+            for value in self.exclusions.get("content_types", []) or []
+        }
+        if excluded_content_types.intersection({"politics", "political"}):
+            query_terms = set(re.findall(r"[a-z0-9]+", _as_text(query).lower()))
+            if query_terms & self.POLITICAL_QUERY_TERMS:
+                return True, "Political search query"
+
+        if video is None:
+            return False, ""
+
         title = _as_text(video.title)
         channel = _as_text(video.channel)
         description = _as_text(video.description)

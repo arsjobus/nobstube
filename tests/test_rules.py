@@ -29,3 +29,26 @@ def test_long_technical_video_can_pass():
     )
     rejected, _ = engine.hard_reject(video)
     assert not rejected
+
+
+def test_political_search_query_is_rejected_when_politics_is_excluded():
+    engine = RuleEngine({
+        "exclusions": {"content_types": ["politics"]},
+        "settings": {},
+    })
+
+    rejected, reason = engine.hard_reject(None, query="trump news")
+
+    assert rejected
+    assert reason == "Political search query"
+
+
+def test_nonpolitical_query_is_not_rejected_by_politics_rule():
+    engine = RuleEngine({
+        "exclusions": {"content_types": ["politics"]},
+        "settings": {},
+    })
+
+    rejected, _ = engine.hard_reject(None, query="news about computer security")
+
+    assert not rejected
