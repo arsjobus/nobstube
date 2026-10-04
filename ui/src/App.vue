@@ -15,6 +15,7 @@ const searchResults = ref<SearchResults | null>(null)
 const bookmarkResults = ref<SearchResults | null>(null)
 const results = computed(() => routeView.value === 'bookmarks' ? bookmarkResults.value : searchResults.value)
 const video = ref<Video | null>(null)
+const player = ref<HTMLVideoElement | null>(null)
 const loading = ref(false)
 const error = ref('')
 const routeView = computed(() => route.path === '/rules' ? 'rules' : route.path === '/bookmarks' ? 'bookmarks' : route.path.startsWith('/watch/') ? 'watch' : 'search')
@@ -51,7 +52,12 @@ async function toggleBookmark(item: Video) {
 async function openVideo(item: Video) {
   await router.push(`/watch/${encodeURIComponent(item.source)}/${item.source_id.split('/').map(encodeURIComponent).join('/')}`)
 }
-function closeVideo() { router.back() }
+function closeVideo() {
+  player.value?.pause()
+  video.value = null
+  if (window.history.state?.back) router.back()
+  else void router.replace('/')
+}
 async function loadCurrentVideo() {
   loading.value = true; error.value = ''; video.value = null
   try { video.value = await getVideo(String(route.params.source), String(route.params.sourceId)) }
@@ -59,7 +65,10 @@ async function loadCurrentVideo() {
   finally { loading.value = false }
 }
 function handleKey(event: KeyboardEvent) {
-  if (event.key === 'Escape' && routeView.value === 'watch') closeVideo()
+  if (event.key === 'Escape' && routeView.value === 'watch') {
+    event.preventDefault()
+    closeVideo()
+  }
   if (event.key === '/' && !(document.activeElement instanceof HTMLInputElement) && routeView.value === 'search') {
     event.preventDefault(); document.querySelector<HTMLInputElement>('#search-input')?.focus()
   }
@@ -83,14 +92,14 @@ watch(() => route.fullPath, async () => {
 })
 
 onMounted(async () => {
-  document.addEventListener('keydown', handleKey)
+  window.addEventListener('keydown', handleKey, true)
   try { config.value = await getConfig(); candidateCount.value = Number(route.query.candidates_per_source ?? config.value.default_candidates_per_source) }
   catch (e) { error.value = e instanceof Error ? e.message : 'Unable to connect to the API.' }
   if (routeView.value === 'search' && route.query.q) await loadSearch(Number(route.query.page ?? 1), false)
   if (routeView.value === 'watch') await loadCurrentVideo()
   if (routeView.value === 'bookmarks') await loadBookmarks(Number(route.query.page ?? 1))
 })
-onUnmounted(() => document.removeEventListener('keydown', handleKey))
+onUnmounted(() => window.removeEventListener('keydown', handleKey, true))
 </script>
 
 <template>
@@ -142,7 +151,7 @@ onUnmounted(() => document.removeEventListener('keydown', handleKey))
   </main>
 
   <main v-else-if="video" class="watch-container watch-page">
-    <div class="player"><video v-if="video.playable_url" controls preload="metadata" :poster="video.thumbnail_url"><source :src="video.playable_url">Your browser does not support HTML5 video.</video><iframe v-else-if="video.embed_url" :src="video.embed_url" :title="video.title" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe><div v-else class="player-unavailable">This video cannot currently be played inside NoBSTube.</div><button class="watch-close" type="button" aria-label="Close video and return to results" title="Back to results" @click="closeVideo">×</button></div>
+    <div class="player"><video v-if="video.playable_url" ref="player" controls preload="metadata" :poster="video.thumbnail_url"><source :src="video.playable_url">Your browser does not support HTML5 video.</video><iframe v-else-if="video.embed_url" :src="video.embed_url" :title="video.title" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe><div v-else class="player-unavailable">This video cannot currently be played inside NoBSTube.</div><button class="watch-close" type="button" aria-label="Close video and return to results" title="Back to results" @click="closeVideo">×</button></div>
     <div v-if="video.url" class="external fallback-link"><a :href="video.url" target="_blank" rel="noopener noreferrer">{{ video.embed_url || video.playable_url ? 'If playback fails, open' : 'Open' }} this video on {{ video.source }} ↗</a></div>
     <div class="watch-title-row"><h1>{{ video.title }}</h1><button class="bookmark-action" type="button" :aria-pressed="video.is_bookmarked" @click="toggleBookmark(video)">{{ video.is_bookmarked ? '★ Bookmarked' : '☆ Bookmark' }}</button></div><div v-if="video.channel" class="watch-meta">{{ video.channel }}</div><div v-if="video.description" class="description">{{ video.description }}</div>
   </main>
