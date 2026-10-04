@@ -2,6 +2,8 @@
 
 **A local, self-hosted video discovery engine that helps you find useful videos without relying on an algorithmic recommendation feed.**
 
+![NoBSTube Cover Image](cover.png)
+
 NoBSTube searches multiple video sources, builds a local candidate pool, applies deterministic filtering, and uses a configurable LLM to identify videos that are relevant to what you actually searched for. Choose local Ollama or the OpenAI API.
 
 The goal is simple:
@@ -12,7 +14,7 @@ The goal is simple:
 
 ## Why NoBSTube?
 
-Most video platforms optimize for keeping you watching.
+Most video platforms optimize for keeping you watching. Some video platforms show unwanted shock content. This AI filtered video search software bleaches out the bullsh*t.
 
 NoBSTube is designed around a different workflow:
 
