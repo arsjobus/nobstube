@@ -1,6 +1,6 @@
 # NoBSTube
 
-**A local, self-hosted video discovery engine that helps you find useful videos without relying on an algorithmic recommendation feed.**
+**A local, self-hosted video meta search engine that helps you find useful videos without relying on an algorithmic recommendation feed.**
 
 ![NoBSTube Cover Image](cover.png)
 
