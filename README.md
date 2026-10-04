@@ -12,6 +12,8 @@ The goal is simple:
 
 ---
 
+## Philosophy
+
 This project is part of the Intentional Computing project.
 
 See:
