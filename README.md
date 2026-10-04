@@ -12,6 +12,13 @@ The goal is simple:
 
 ---
 
+This project is part of the Intentional Computing project.
+
+See:
+https://github.com/arsjobus/intentional-computing
+
+---
+
 ## Why NoBSTube?
 
 Most video platforms optimize for keeping you watching. Some video platforms show unwanted shock content. This AI filtered video search software bleaches out the bullsh*t.
