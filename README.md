@@ -600,4 +600,3 @@ NoBSTube is intentionally lightweight and has some limitations:
 * Source APIs and search behavior can change.
 * YouTube discovery through `yt-dlp` may occasionally be affected by changes on YouTube.
 * The current cache is process-local rather than a distributed cache.
-* Playback availabili
